@@ -20,6 +20,15 @@ app.get('/seats/:id', (req, res) => {
 
 app.post('/seats', (req, res) => {
     const { day, seat, client, email } = req.body;
+
+    const isSeatTaken = db.seats.some(
+        (item) => item.day === day && item.seat === seat
+    );
+
+    if (isSeatTaken) {
+        return res.status(400).json({ message: 'The slot is already taken...' });
+    }
+
     const newSeat = {
         id: generateRandomId(),
         day: day,
