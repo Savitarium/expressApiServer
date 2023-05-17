@@ -1,77 +1,53 @@
-const db = require("../db");
-const express = require("express");
-const app = express();
-app.get('/seats', (req, res) => {
+const express = require('express');
+const db = require('../db.js');
+const uuid = require('uuid').v4;
+const router = express.Router();
+router.route('/seats').get((req, res) => {
     res.json(db.seats);
 });
-
-app.get('/seats/:id', (req, res) => {
-    const seatId = req.params.id;
-    const seat = db.seats.find(
-        item => item.id === parseInt(seatId)
-    );
-    if (seat) {
-        res.json(seat);
-    } else {
-        res.status(404).json({ error: 'Testimonial not found' });
-    }
+router.route('/seats/:id').get((req, res) => {
+    res.json(db.seats.find((seats) => seats.id === +req.params.id));
 });
-
-
-app.post('/seats', (req, res) => {
+router.route('/seats').post((req, res) => {
     const { day, seat, client, email } = req.body;
-
-    const isSeatTaken = db.seats.some(
-        (item) => item.day === day && item.seat === seat
-    );
-
-    if (isSeatTaken) {
-        return res.status(400).json({ message: 'The slot is already taken...' });
-    }
-
-    const newSeat = {
-        id: generateRandomId(),
-        day: day,
-        seat: seat,
-        client: client,
-        email: email,
-    };
-    db.seats.push(newSeat);
-    res.json({ message: 'OK' });
-});
-
-
-app.put('/seats/:id', (req, res) => {
-    const seatId = req.params.id;
-    const { day, seat, client, email } = req.body;
-    const seatNumber = db.seats.find(
-        item => item.id === parseInt(seatId)
-    );
-    if (seatNumber) {
-        seat.day = day || seat.day;
-        seat.seat = seat || seat.seat;
-        seat.client = client || seat.client;
-        seat.email = email || seat.client;
-        res.json({ message: 'OK' });
+    const id = uuid();
+    const newSeats = { id: id, day, seat, client, email };
+    if (db.seats.some((seatCheck) => seatCheck.day == newSeats.day && seatCheck.seat == newSeats.seat)) {
+        res.json({ message: 'The slot is already taken' });
+        res.status(409).json({ message: 'The slot is already taken!' });
     } else {
-        res.status(404).json({ error: 'Testimonial not found' });
+        db.seats.push(newSeats);
+        req.io.emit('seatsUpdated', db.seats);
+        res.json({ message: 'ok!' });
+
     }
 });
-
-
-app.delete('/seats/:id', (req, res) => {
-    const seatId = req.params.id;
-    const seatIndex = db.seats.findIndex(
-        item => item.id === parseInt(seatId)
-    );
-    if (seatIndex !== -1) {
-        db.seats.splice(seatIndex, 1);
-        res.json({ message: 'OK' });
-    } else {
-        res.status(404).json({ error: 'Testimonial not found' });
+router.route('/seats/:id').delete(
+    (req, res) => {
+        const id = +req.params.id;
+        db.seats.splice(
+            db.seats.findIndex((seat) => seat.id === id),
+            1
+        );
+        res.json({ message: 'Seat deleted' });
+    },
+    (err) => {
+        console.log(err);
     }
-});
-function generateRandomId() {
-    return Math.floor(Math.random() * 1000) + 1;
-}
-module.exports = app;
+);
+router.route('/seats/:id').put(
+    (req, res) => {
+        const { day, seat, client, email } = req.body;
+        const id = +req.params.id;
+        const newSeats = db.seats.find((seat) => seat.id === id);
+        newSeats.day = day;
+        newSeats.seat = seat;
+        newSeats.client = client;
+        newSeats.email = email;
+        res.json({ message: 'ok!' });
+    },
+    (err) => {
+        console.log(err);
+    }
+);
+module.exports = router;
