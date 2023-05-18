@@ -1,5 +1,6 @@
 const Seat = require("../models/seat.model");
 const Concert = require("../models/concert.model");
+const sanitize = require('mongo-sanitize');
 
 exports.getAll = async (req, res) => {
     try {
@@ -22,7 +23,7 @@ exports.getId = async (req, res) => {
 };
 exports.post = async (req, res) => {
     try {
-    const { day, seat, client, email } = req.body;
+    const { day, seat, client, email } = sanitize(req.body);
     const newSeat = new Seat({ day: day, seat: seat, client: client, email: email });
     await newSeat.save();
     res.json({ message: 'OK' });
@@ -43,7 +44,7 @@ exports.delete = async (req, res) => {
     }
 };
 exports.put = async (req, res) => {
-    const {day, seat, client, email} = req.body;
+    const {day, seat, client, email} = sanitize(req.body);
     try {
         const sea = await Seat.findByIdAndUpdate(req.params.id, {
             day: day,
